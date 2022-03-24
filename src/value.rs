@@ -30,7 +30,7 @@ impl ValueArray {
         }
 
         unsafe {
-            ptr::write(self.values.offset(self.count as isize), value);
+            ptr::write(self.values.add(self.count), value);
         }
         self.count += 1;
     }
@@ -39,7 +39,7 @@ impl ValueArray {
 impl Index<usize> for ValueArray {
     type Output = Value;
     fn index(&self, index: usize) -> &Self::Output {
-        unsafe { &*self.values.offset(index as isize) }
+        unsafe { &*self.values.add(index) }
     }
 }
 

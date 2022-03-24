@@ -11,6 +11,12 @@ pub fn disassemble_chunk(chunk: &Chunk, name: &str) {
 
 pub fn disassemble_instruction(chunk: &Chunk, offset: usize) -> usize {
     print!("{:04} ", offset);
+    if offset > 0 && chunk.line(offset) == chunk.line(offset - 1) {
+        print!("   | ");
+    } else {
+        print!("{:4} ", chunk.line(offset));
+    }
+
     let instruction = chunk[offset];
     match OpCode::try_from(instruction) {
         Ok(OpCode::Constant) => constant_instruction("OP_CONSTANT", chunk, offset),
