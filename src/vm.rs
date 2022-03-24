@@ -1,7 +1,11 @@
 use crate::chunk::{Chunk, OpCode};
+#[cfg(debug_assertions)]
+use crate::debug::disassemble_instruction;
 use crate::value::Value;
 
 use std::ptr;
+
+const MAX_STACK: usize = 256;
 
 pub enum InterpretResult {
     Ok,
@@ -12,13 +16,37 @@ pub enum InterpretResult {
 pub struct VM {
     chunk: *const Chunk,
     ip: *const u8,
+    stack: [Value; MAX_STACK],
+    stack_top: *mut Value,
 }
 
 impl VM {
     pub fn new() -> Self {
-        Self {
+        let mut value = Self {
             chunk: ptr::null(),
             ip: ptr::null(),
+            stack: [0.0; MAX_STACK],
+            stack_top: ptr::null_mut(),
+        };
+        value.reset_stack();
+        value
+    }
+
+    fn reset_stack(&mut self) {
+        self.stack_top = self.stack.as_mut_ptr();
+    }
+
+    fn push(&mut self, value: Value) {
+        unsafe {
+            self.stack_top.write(value);
+            self.stack_top = self.stack_top.add(1);
+        }
+    }
+
+    fn pop(&mut self) -> Value {
+        unsafe {
+            self.stack_top = self.stack_top.sub(1);
+            *self.stack_top
         }
     }
 
@@ -42,14 +70,32 @@ impl VM {
 
     fn run(&mut self) -> InterpretResult {
         loop {
+            #[cfg(debug_assertions)]
+            unsafe {
+                print!("          ");
+                let mut slot = self.stack.as_mut_ptr();
+                while slot != self.stack_top {
+                    print!("[ {} ]", *slot);
+                    slot = slot.add(1);
+                }
+                println!("");
+                disassemble_instruction(
+                    &*self.chunk,
+                    self.ip.offset_from((*self.chunk).code) as usize,
+                );
+            }
+
             let instruction = unsafe { OpCode::from_byte(self.read_byte()) };
 
             match instruction {
                 OpCode::Constant => {
                     let constant = unsafe { self.read_constant() };
-                    println!("{}", constant);
+                    self.push(constant);
                 }
-                OpCode::Return => return InterpretResult::Ok,
+                OpCode::Return => {
+                    println!("{}", self.pop());
+                    return InterpretResult::Ok;
+                }
                 _ => unimplemented!(),
             }
         }
