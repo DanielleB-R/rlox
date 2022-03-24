@@ -2,18 +2,26 @@ use std::ops::Index;
 use std::ptr;
 
 use crate::memory::{free_array, grow_array, grow_capacity};
+use crate::value::{Value, ValueArray};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum OpCode {
+    Constant,
     Return,
+}
+
+impl From<OpCode> for u8 {
+    fn from(code: OpCode) -> Self {
+        code as Self
+    }
 }
 
 impl TryFrom<u8> for OpCode {
     type Error = ();
 
     fn try_from(op: u8) -> Result<Self, Self::Error> {
-        if op >= (OpCode::Return as u8) && op < ((OpCode::Return as u8) + 1) {
+        if op >= (OpCode::Constant as u8) && op < ((OpCode::Return as u8) + 1) {
             // We know that it's a valid Opcode here so we can transmute
             Ok(unsafe { std::mem::transmute(op) })
         } else {
@@ -26,6 +34,7 @@ pub struct Chunk {
     code: *mut u8,
     pub(crate) count: usize,
     capacity: usize,
+    pub(crate) constants: ValueArray,
 }
 
 impl Chunk {
@@ -34,6 +43,7 @@ impl Chunk {
             count: 0,
             capacity: 0,
             code: ptr::null_mut(),
+            constants: ValueArray::new(),
         }
     }
 
@@ -49,12 +59,17 @@ impl Chunk {
         }
         self.count += 1;
     }
+
+    pub fn add_constant(&mut self, value: Value) -> usize {
+        self.constants.write(value);
+        self.constants.count - 1
+    }
 }
 
 impl Index<usize> for Chunk {
     type Output = u8;
     fn index(&self, index: usize) -> &Self::Output {
-        unsafe { self.code.offset(index as isize).as_ref().unwrap() }
+        unsafe { &*self.code.offset(index as isize) }
     }
 }
 
