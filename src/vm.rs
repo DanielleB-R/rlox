@@ -13,6 +13,16 @@ pub enum InterpretResult {
     RuntimeError,
 }
 
+macro_rules! binary_op {
+    ($stack:ident, $op:tt) => {
+        {
+            let b = $stack.pop();
+            let a = $stack.pop();
+            $stack.push(a $op b);
+        }
+    }
+}
+
 pub struct VM {
     chunk: *const Chunk,
     ip: *const u8,
@@ -92,6 +102,14 @@ impl VM {
                     let constant = unsafe { self.read_constant() };
                     self.push(constant);
                 }
+                OpCode::Negate => {
+                    let value = self.pop();
+                    self.push(-value);
+                }
+                OpCode::Add => binary_op!(self, +),
+                OpCode::Subtract => binary_op!(self, -),
+                OpCode::Multiply => binary_op!(self, *),
+                OpCode::Divide => binary_op!(self, /),
                 OpCode::Return => {
                     println!("{}", self.pop());
                     return InterpretResult::Ok;

@@ -20,6 +20,11 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize) -> usize {
     let instruction = chunk[offset];
     match OpCode::try_from(instruction) {
         Ok(OpCode::Constant) => constant_instruction("OP_CONSTANT", chunk, offset),
+        Ok(OpCode::Negate) => simple_instruction("OP_NEGATE", offset),
+        Ok(OpCode::Add) => simple_instruction("OP_ADD", offset),
+        Ok(OpCode::Subtract) => simple_instruction("OP_SUBTRACT", offset),
+        Ok(OpCode::Multiply) => simple_instruction("OP_MULTIPLY", offset),
+        Ok(OpCode::Divide) => simple_instruction("OP_DIVIDE", offset),
         Ok(OpCode::Return) => simple_instruction("OP_RETURN", offset),
         Err(()) => {
             println!("Unknown opcode {}", instruction);
