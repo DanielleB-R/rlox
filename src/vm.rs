@@ -1,4 +1,5 @@
 use crate::chunk::{Chunk, OpCode};
+use crate::compiler::compile;
 #[cfg(debug_assertions)]
 use crate::debug::disassemble_instruction;
 use crate::value::Value;
@@ -60,10 +61,9 @@ impl VM {
         }
     }
 
-    pub fn interpret(&mut self, chunk: &Chunk) -> InterpretResult {
-        self.chunk = chunk as *const Chunk;
-        self.ip = chunk.code as *const u8;
-        self.run()
+    pub fn interpret(&mut self, source: &str) -> InterpretResult {
+        compile(source);
+        InterpretResult::Ok
     }
 
     #[inline]
