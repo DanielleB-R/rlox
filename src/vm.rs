@@ -62,8 +62,21 @@ impl VM {
     }
 
     pub fn interpret(&mut self, source: &str) -> InterpretResult {
-        compile(source);
-        InterpretResult::Ok
+        let mut chunk = Chunk::new();
+
+        if !compile(source, &mut chunk) {
+            return InterpretResult::CompileError;
+        }
+
+        self.chunk = &chunk as *const Chunk;
+        self.ip = chunk.code as *const u8;
+
+        let result = self.run();
+
+        self.chunk = ptr::null();
+        self.ip = ptr::null();
+
+        result
     }
 
     #[inline]

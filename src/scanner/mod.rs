@@ -13,6 +13,16 @@ pub struct Token<'a> {
     pub slice: &'a str,
 }
 
+impl Default for Token<'_> {
+    fn default() -> Self {
+        Self {
+            token_type: TokenType::EOF,
+            line: 0,
+            slice: "",
+        }
+    }
+}
+
 fn is_alpha(c: u8) -> bool {
     c.is_ascii_alphabetic() || c == b'_'
 }

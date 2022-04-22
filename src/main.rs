@@ -1,7 +1,5 @@
 use std::{env, fs, io, process};
 
-use rlox::chunk::{Chunk, OpCode};
-use rlox::debug::disassemble_chunk;
 use rlox::vm::{InterpretResult, VM};
 
 fn read_file(filename: &str) -> String {
