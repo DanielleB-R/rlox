@@ -129,6 +129,15 @@ macro_rules! rule_lookups {
     }
 }
 
+macro_rules! opcode {
+    ($self:ident, $opcode:ident) => {
+        $self.emit_byte(OpCode::$opcode as u8)
+    };
+    ($self:ident, $opcode1:ident, $opcode2:ident) => {
+        $self.emit_bytes(OpCode::$opcode1 as u8, OpCode::$opcode2 as u8)
+    };
+}
+
 struct Compiler<'a> {
     parser: Parser<'a>,
     chunk: &'a mut Chunk,
@@ -145,7 +154,17 @@ impl<'a> Compiler<'a> {
         Plus, boom, binary, Term;
         Slash, boom, binary, Factor;
         Star, boom, binary, Factor;
-        Number, number, noop, None
+        Bang, unary, noop, None;
+        BangEqual, boom, binary, Equality;
+        EqualEqual, boom, binary, Equality;
+        Greater, boom, binary, Comparison;
+        GreaterEqual, boom, binary, Comparison;
+        Less, boom, binary, Comparison;
+        LessEqual, boom, binary, Comparison;
+        Number, number, noop, None;
+        False, literal, noop, None;
+        Nil, literal, noop, None;
+        True, literal, noop, None
     }
 
     fn noop(&mut self) {}
@@ -199,6 +218,7 @@ impl<'a> Compiler<'a> {
         self.parse_precedence(Precedence::Unary);
 
         match operator_type {
+            TokenType::Bang => self.emit_byte(OpCode::Not as u8),
             TokenType::Minus => self.emit_byte(OpCode::Negate as u8),
             _ => unreachable!(),
         }
@@ -208,13 +228,28 @@ impl<'a> Compiler<'a> {
         let operator_type = self.parser.previous.token_type;
         self.parse_precedence(self.precedence_for(operator_type).incr());
 
-        self.emit_byte(match operator_type {
-            TokenType::Plus => OpCode::Add,
-            TokenType::Minus => OpCode::Subtract,
-            TokenType::Star => OpCode::Multiply,
-            TokenType::Slash => OpCode::Divide,
+        match operator_type {
+            TokenType::BangEqual => opcode!(self, Equal, Not),
+            TokenType::EqualEqual => opcode!(self, Equal),
+            TokenType::Greater => opcode!(self, Greater),
+            TokenType::GreaterEqual => opcode!(self, Less, Not),
+            TokenType::Less => opcode!(self, Less),
+            TokenType::LessEqual => opcode!(self, Greater, Not),
+            TokenType::Plus => opcode!(self, Add),
+            TokenType::Minus => opcode!(self, Subtract),
+            TokenType::Star => opcode!(self, Multiply),
+            TokenType::Slash => opcode!(self, Divide),
             _ => unreachable!(),
-        } as u8);
+        };
+    }
+
+    fn literal(&mut self) {
+        self.emit_byte(match self.parser.previous.token_type {
+            TokenType::False => OpCode::False,
+            TokenType::Nil => OpCode::Nil,
+            TokenType::True => OpCode::True,
+            _ => unreachable!(),
+        } as u8)
     }
 
     fn expression(&mut self) {

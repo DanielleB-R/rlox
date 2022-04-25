@@ -29,6 +29,10 @@ macro_rules! binary_op {
     }
 }
 
+fn is_falsey(value: Value) -> bool {
+    value == Value::Nil || value == Value::Bool(false)
+}
+
 pub struct VM {
     chunk: *const Chunk,
     ip: *const u8,
@@ -129,6 +133,24 @@ impl VM {
                     let constant = unsafe { self.read_constant() };
                     self.push(constant);
                 }
+                OpCode::Nil => self.push(Value::Nil),
+                OpCode::True => self.push(Value::Bool(true)),
+                OpCode::False => self.push(Value::Bool(false)),
+                OpCode::Equal => {
+                    let b = self.pop();
+                    let a = self.pop();
+                    self.push((a == b).into());
+                }
+                OpCode::Greater => binary_op!(self, >),
+                OpCode::Less => binary_op!(self, <),
+                OpCode::Add => binary_op!(self, +),
+                OpCode::Subtract => binary_op!(self, -),
+                OpCode::Multiply => binary_op!(self, *),
+                OpCode::Divide => binary_op!(self, /),
+                OpCode::Not => {
+                    let value = self.pop();
+                    self.push(is_falsey(value).into())
+                }
                 OpCode::Negate => {
                     let value = self.pop();
                     if let Value::Number(n) = value {
@@ -138,10 +160,6 @@ impl VM {
                         return InterpretResult::RuntimeError;
                     }
                 }
-                OpCode::Add => binary_op!(self, +),
-                OpCode::Subtract => binary_op!(self, -),
-                OpCode::Multiply => binary_op!(self, *),
-                OpCode::Divide => binary_op!(self, /),
                 OpCode::Return => {
                     println!("{}", self.pop());
                     return InterpretResult::Ok;

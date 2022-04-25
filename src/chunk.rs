@@ -9,11 +9,18 @@ use crate::value::{Value, ValueArray};
 #[non_exhaustive]
 pub enum OpCode {
     Constant,
-    Negate,
+    Nil,
+    True,
+    False,
+    Equal,
+    Greater,
+    Less,
     Add,
     Subtract,
     Multiply,
     Divide,
+    Not,
+    Negate,
     Return,
 }
 
