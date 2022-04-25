@@ -168,7 +168,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn number(&mut self) {
-        self.emit_constant(self.parser.previous.slice.parse().unwrap())
+        self.emit_constant(self.parser.previous.slice.parse::<f64>().unwrap().into())
     }
 
     fn emit_constant(&mut self, value: Value) {

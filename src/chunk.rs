@@ -45,7 +45,7 @@ impl TryFrom<u8> for OpCode {
 
 pub struct Chunk {
     pub(crate) code: *mut u8,
-    lines: *mut u32,
+    pub(crate) lines: *mut u32,
     pub(crate) count: usize,
     capacity: usize,
     pub(crate) constants: ValueArray,

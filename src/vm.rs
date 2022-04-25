@@ -19,7 +19,12 @@ macro_rules! binary_op {
         {
             let b = $stack.pop();
             let a = $stack.pop();
-            $stack.push(a $op b);
+            if let (Value::Number(a_n), Value::Number(b_n)) = (a, b) {
+                $stack.push((a_n $op b_n).into());
+            } else {
+                $stack.runtime_error("Operands must be numbers.");
+                return InterpretResult::RuntimeError;
+            }
         }
     }
 }
@@ -36,11 +41,20 @@ impl VM {
         let mut value = Self {
             chunk: ptr::null(),
             ip: ptr::null(),
-            stack: [0.0; MAX_STACK],
+            stack: [0.0.into(); MAX_STACK],
             stack_top: ptr::null_mut(),
         };
         value.reset_stack();
         value
+    }
+
+    fn runtime_error(&mut self, message: &str) {
+        eprintln!("{}", message);
+
+        let instruction = unsafe { self.ip.offset_from((*self.chunk).code) - 1 };
+        let line = unsafe { *((*self.chunk).lines.offset(instruction)) };
+        eprintln!("[line {}] in script", line);
+        self.reset_stack();
     }
 
     fn reset_stack(&mut self) {
@@ -117,7 +131,12 @@ impl VM {
                 }
                 OpCode::Negate => {
                     let value = self.pop();
-                    self.push(-value);
+                    if let Value::Number(n) = value {
+                        self.push(Value::Number(-n));
+                    } else {
+                        self.runtime_error("Operand must be a number");
+                        return InterpretResult::RuntimeError;
+                    }
                 }
                 OpCode::Add => binary_op!(self, +),
                 OpCode::Subtract => binary_op!(self, -),

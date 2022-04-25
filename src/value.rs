@@ -1,11 +1,36 @@
-use std::ops::Index;
 use std::ptr;
+use std::{fmt::Display, ops::Index};
 
 use crate::memory::{free_array, grow_array, grow_capacity};
 
-pub type Value = f64;
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Value {
+    Nil,
+    Bool(bool),
+    Number(f64),
+}
 
-// add impl Display here later
+impl From<bool> for Value {
+    fn from(b: bool) -> Self {
+        Self::bool(b)
+    }
+}
+
+impl From<f64> for Value {
+    fn from(n: f64) -> Self {
+        Self::Number(n)
+    }
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Nil => write!(f, "nil"),
+            Self::Bool(b) => write!(f, "{}", b),
+            Self::Number(n) => write!(f, "{}", n),
+        }
+    }
+}
 
 pub struct ValueArray {
     capacity: usize,
