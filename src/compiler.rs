@@ -209,7 +209,7 @@ impl<'a> Compiler<'a> {
     fn grouping(&mut self) {
         self.expression();
         self.parser
-            .consume(TokenType::RightParen, "Expect '(' after expression.");
+            .consume(TokenType::RightParen, "Expect ')' after expression.");
     }
 
     fn unary(&mut self) {
