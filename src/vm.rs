@@ -2,9 +2,11 @@ use crate::chunk::{Chunk, OpCode};
 use crate::compiler::compile;
 #[cfg(debug_assertions)]
 use crate::debug::disassemble_instruction;
+use crate::memory::allocate;
+use crate::object::Obj;
 use crate::value::Value;
 
-use std::ptr;
+use std::ptr::{self, copy_nonoverlapping};
 
 const MAX_STACK: usize = 256;
 
@@ -17,10 +19,10 @@ pub enum InterpretResult {
 macro_rules! binary_op {
     ($stack:ident, $op:tt) => {
         {
-            let b = $stack.pop();
-            let a = $stack.pop();
-            if let (Value::Number(a_n), Value::Number(b_n)) = (a, b) {
-                $stack.push((a_n $op b_n).into());
+            if $stack.peek(0).is_number() && $stack.peek(1).is_number() {
+                let b = $stack.pop().as_number();
+                let a = $stack.pop().as_number();
+                $stack.push((a $op b).into());
             } else {
                 $stack.runtime_error("Operands must be numbers.");
                 return InterpretResult::RuntimeError;
@@ -79,6 +81,10 @@ impl VM {
         }
     }
 
+    fn peek(&self, distance: usize) -> &Value {
+        unsafe { self.stack_top.sub(1 + distance).as_ref().unwrap() }
+    }
+
     pub fn interpret(&mut self, source: &str) -> InterpretResult {
         let mut chunk = Chunk::new();
 
@@ -107,6 +113,23 @@ impl VM {
     #[inline]
     unsafe fn read_constant(&mut self) -> Value {
         (*(self.chunk)).constants[self.read_byte().into()]
+    }
+
+    fn concatenate(&mut self) {
+        let b = self.pop();
+        let a = self.pop();
+
+        let b_str = b.as_string();
+        let a_str = a.as_string();
+
+        let length = a_str.length + b_str.length;
+        let chars = allocate(length);
+        unsafe {
+            copy_nonoverlapping(a_str.chars, chars, a_str.length);
+            copy_nonoverlapping(b_str.chars, chars.add(a_str.length), b_str.length);
+        }
+
+        self.push(Obj::take_string(chars, length).into())
     }
 
     fn run(&mut self) -> InterpretResult {
@@ -143,7 +166,20 @@ impl VM {
                 }
                 OpCode::Greater => binary_op!(self, >),
                 OpCode::Less => binary_op!(self, <),
-                OpCode::Add => binary_op!(self, +),
+                OpCode::Add => {
+                    if self.peek(0).is_string() && self.peek(1).is_string() {
+                        self.concatenate();
+                    } else {
+                        if self.peek(0).is_number() && self.peek(1).is_number() {
+                            let b = self.pop().as_number();
+                            let a = self.pop().as_number();
+                            self.push((a + b).into());
+                        } else {
+                            self.runtime_error("Operands must both be numbers or strings.");
+                            return InterpretResult::RuntimeError;
+                        }
+                    }
+                }
                 OpCode::Subtract => binary_op!(self, -),
                 OpCode::Multiply => binary_op!(self, *),
                 OpCode::Divide => binary_op!(self, /),
@@ -152,9 +188,9 @@ impl VM {
                     self.push(is_falsey(value).into())
                 }
                 OpCode::Negate => {
-                    let value = self.pop();
-                    if let Value::Number(n) = value {
-                        self.push(Value::Number(-n));
+                    if self.peek(0).is_number() {
+                        let n = self.pop().as_number();
+                        self.push((-n).into());
                     } else {
                         self.runtime_error("Operand must be a number");
                         return InterpretResult::RuntimeError;
@@ -167,5 +203,25 @@ impl VM {
                 _ => unimplemented!(),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_stack() {
+        let mut vm = VM::new();
+
+        vm.push(Value::Nil);
+        assert_eq!(vm.peek(0), &Value::Nil);
+        assert_eq!(vm.pop(), Value::Nil);
+
+        vm.push(Value::Bool(true));
+        vm.push(Value::Number(25.0));
+        assert_eq!(vm.peek(1), &Value::Bool(true));
+        assert_eq!(vm.pop(), Value::Number(25.0));
+        assert_eq!(vm.pop(), Value::Bool(true));
     }
 }

@@ -10,7 +10,11 @@ pub enum Obj {
 
 impl Obj {
     pub fn copy_string(string: &str) -> *mut Self {
-        Box::into_raw(Box::new(Obj::String(ObjString::from_str(string))))
+        ObjString::from_str(string).into()
+    }
+
+    pub fn take_string(chars: *mut u8, length: usize) -> *mut Self {
+        ObjString::new(chars, length).into()
     }
 }
 
@@ -24,8 +28,8 @@ impl Display for Obj {
 
 #[derive(Debug, Clone)]
 pub struct ObjString {
-    length: usize,
-    chars: *mut u8,
+    pub length: usize,
+    pub chars: *mut u8,
 }
 
 impl ObjString {
@@ -37,20 +41,30 @@ impl ObjString {
     }
 
     fn from_str(slice: &str) -> Self {
-        let length = slice.len();
-        let heap_chars = memory::allocate(slice.len());
+        let length = slice.len() - 2;
+        let heap_chars = memory::allocate(length);
         unsafe {
-            copy_nonoverlapping(slice.as_ptr(), heap_chars, slice.len());
+            copy_nonoverlapping(slice.as_ptr().add(1), heap_chars, length);
         }
         Self {
             length,
             chars: heap_chars,
         }
     }
+
+    fn new(chars: *mut u8, length: usize) -> Self {
+        Self { chars, length }
+    }
 }
 
 impl PartialEq for ObjString {
     fn eq(&self, other: &Self) -> bool {
         self.as_ruststr() == other.as_ruststr()
+    }
+}
+
+impl Into<*mut Obj> for ObjString {
+    fn into(self) -> *mut Obj {
+        Box::into_raw(Box::new(Obj::String(self)))
     }
 }
