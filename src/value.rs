@@ -2,12 +2,14 @@ use std::ptr;
 use std::{fmt::Display, ops::Index};
 
 use crate::memory::{free_array, grow_array, grow_capacity};
+use crate::object::Obj;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 pub enum Value {
     Nil,
     Bool(bool),
     Number(f64),
+    Obj(*mut Obj),
 }
 
 impl From<bool> for Value {
@@ -22,12 +24,31 @@ impl From<f64> for Value {
     }
 }
 
+impl From<*mut Obj> for Value {
+    fn from(value: *mut Obj) -> Self {
+        Self::Obj(value)
+    }
+}
+
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Nil => write!(f, "nil"),
             Self::Bool(b) => write!(f, "{}", b),
             Self::Number(n) => write!(f, "{}", n),
+            Self::Obj(o) => write!(f, "{}", unsafe { &**o }),
+        }
+    }
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Nil, Self::Nil) => true,
+            (Self::Bool(a), Self::Bool(b)) => a == b,
+            (Self::Number(a), Self::Number(b)) => a == b,
+            (Self::Obj(a), Self::Obj(b)) => unsafe { **a == **b },
+            _ => false,
         }
     }
 }

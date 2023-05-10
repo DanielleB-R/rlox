@@ -1,4 +1,5 @@
 use crate::chunk::{Chunk, OpCode};
+use crate::object::Obj;
 use crate::scanner::{Scanner, Token, TokenType};
 use crate::value::Value;
 use std::mem;
@@ -161,6 +162,7 @@ impl<'a> Compiler<'a> {
         GreaterEqual, boom, binary, Comparison;
         Less, boom, binary, Comparison;
         LessEqual, boom, binary, Comparison;
+        String, string, noop, None;
         Number, number, noop, None;
         False, literal, noop, None;
         Nil, literal, noop, None;
@@ -188,6 +190,10 @@ impl<'a> Compiler<'a> {
 
     fn number(&mut self) {
         self.emit_constant(self.parser.previous.slice.parse::<f64>().unwrap().into())
+    }
+
+    fn string(&mut self) {
+        self.emit_constant(Obj::copy_string(self.parser.previous.slice).into())
     }
 
     fn emit_constant(&mut self, value: Value) {
